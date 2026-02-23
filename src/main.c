@@ -32,18 +32,17 @@ void debug_write(const char* prefix, const char* msg) {
 
 void send_packet() {
 	// Data to send
-	const uint8_t payload[] = "Hello SDTP";
-	const uint32_t payload_len = strlen((const char*)payload);
+	const char payload[] = "Hello SDTP";
 
 	// Construct packet
-	sdtp_packet_t* packet = sdtp_construct_packet(payload, payload_len, SDTP_DATA_PACKET);
+	sdtp_packet_t* packet = sdtp_construct_packet(payload, SDTP_DATA_PACKET);
 	if (!packet) {
 		debug_write("[ERROR]: ", "Packet construction failed");
 		return;
 	}
 
 	// Write packet to the output buffer
-	const enum sdtp_error_t res_code = sdtp_write_packet(instance, packet);
+	const sdtp_status_code_t res_code = sdtp_write_packet(instance, packet);
 	if (res_code != SDTP_OK) {
 		if (IS_DEBUG) {
 			char error_msg_buffer[100];
@@ -76,12 +75,15 @@ void send_packet() {
 }
 
 void read_packet() {
-	// Read packet from the input buffer. Should return NULL if there isn't any
-	sdtp_packet_t* packet = sdtp_read_packet(instance);
+	// Check is buffer empty
+	if (sdtp_buffer_get_used_space(instance->input_buffer) == 0) return;
+
+	// Read packet from the input buffer.
+	sdtp_packet_t* packet = sdtp_read_packet(instance, SDTP_READ_PARTIAL);
 
 	// If packet reading failed
 	if (!packet) {
-		debug_write("[INFO]: ", "No packet available");
+		debug_write("[ERROR]: ", "Packet read failed");
 		return;
 	}
 
