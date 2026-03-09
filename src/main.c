@@ -42,11 +42,11 @@ void send_packet() {
 	}
 
 	// Write packet to the output buffer
-	const sdtp_status_code_t res_code = sdtp_write_packet(instance, packet);
-	if (res_code != SDTP_OK) {
+	const bool is_successful = sdtp_write_packet(instance, packet);
+	if (!is_successful) {
 		if (IS_DEBUG) {
 			char error_msg_buffer[100];
-			sprintf(error_msg_buffer, "Packet write failed: %d", res_code);
+			sprintf(error_msg_buffer, "Packet write failed: %d", is_successful);
 			debug_write("[ERROR]: ", error_msg_buffer);
 		}
 		sdtp_packet_free(packet);
@@ -58,8 +58,8 @@ void send_packet() {
 	if (output_buffer_used > 0) {
 		uint8_t* tmp_buffer = malloc(output_buffer_used);
 		if (tmp_buffer) {
-			const size_t output_read = sdtp_buffer_read(instance, SDTP_OUTPUT_BUFFER, tmp_buffer, output_buffer_used, SDTP_READ_PARTIAL);
-			const size_t written_bytes = sdtp_buffer_write(instance, SDTP_INPUT_BUFFER, tmp_buffer, output_read);
+			const size_t output_read = sdtp_buffer_read(instance->output_buffer, tmp_buffer, output_buffer_used, SDTP_READ_PARTIAL);
+			const size_t written_bytes = sdtp_buffer_write(instance->input_buffer, tmp_buffer, output_read);
 			free(tmp_buffer);
 
 			if (written_bytes == 0 && IS_DEBUG) {
