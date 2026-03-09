@@ -30,6 +30,22 @@ void debug_write(const char* prefix, const char* msg) {
 	uart_write("\r\n");
 }
 
+void copy_output_buffer_to_input_buffer() {
+	const size_t output_buffer_used = sdtp_buffer_get_used_space(instance->output_buffer);
+	if (output_buffer_used > 0) {
+		uint8_t* tmp_buffer = malloc(output_buffer_used);
+		if (tmp_buffer) {
+			const size_t output_read = sdtp_buffer_read(instance->output_buffer, tmp_buffer, output_buffer_used, SDTP_READ_PARTIAL);
+			const size_t written_bytes = sdtp_buffer_write(instance->input_buffer, tmp_buffer, output_read);
+			free(tmp_buffer);
+
+			if (written_bytes == 0) {
+				debug_write("[ERROR]: ", "Failed to transfer packet to input buffer");
+			}
+		}
+	}
+}
+
 void send_packet() {
 	// Data to send
 	const char payload[] = "Hello SDTP";
@@ -54,19 +70,7 @@ void send_packet() {
 	}
 
 	// Transfer data from output buffer to input buffer (temporary, will be removed with driver support)
-	const size_t output_buffer_used = sdtp_buffer_get_used_space(instance->output_buffer);
-	if (output_buffer_used > 0) {
-		uint8_t* tmp_buffer = malloc(output_buffer_used);
-		if (tmp_buffer) {
-			const size_t output_read = sdtp_buffer_read(instance->output_buffer, tmp_buffer, output_buffer_used, SDTP_READ_PARTIAL);
-			const size_t written_bytes = sdtp_buffer_write(instance->input_buffer, tmp_buffer, output_read);
-			free(tmp_buffer);
-
-			if (written_bytes == 0 && IS_DEBUG) {
-				debug_write("[ERROR]: ", "Failed to transfer packet to input buffer");
-			}
-		}
-	}
+	copy_output_buffer_to_input_buffer();
 
 	// Free memory
 	sdtp_packet_free(packet);
@@ -129,8 +133,6 @@ void app_main() {
 		.output_bus_pin = OUTPUT_PIN,
 		.buffer_size = 4096,
 		.baud_rate = 115200,
-		.device_id = esp_random(),
-		.device_type = SDTP_CONTROLLER
 	};
 
 	// Init SDTP
